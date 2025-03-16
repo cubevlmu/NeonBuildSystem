@@ -9,13 +9,15 @@
 #include <vector>
 
 namespace nbs {
-
+    
     class PluginMgr
     {
         struct ManagedPlugin {
             PluginMgr* mgr;
             class NBSModule* module;
             std::atomic<u32> ref;
+            bool isInternalPlugin;
+            const std::string path;
         };
 
     public:
@@ -39,6 +41,7 @@ namespace nbs {
         void releasePlugin(const std::string& id);
         void releaseAll();
         NBSModule* getPlugin(const std::string& id);
+        struct PluginCmd* checkCmd(const char* label);
     
     private:
         void markRelated(const std::string& id);
@@ -48,6 +51,8 @@ namespace nbs {
         void scanInternals();
 
     private:
+        static const u32 MAGIC = 'NBPC';
+
         NBSCtx* m_ctx;
         std::mutex m_mtx;
         std::unordered_map<std::string, ManagedPlugin*> m_pluginLoaded;

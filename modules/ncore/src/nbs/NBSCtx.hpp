@@ -1,21 +1,36 @@
 #pragma once
 
-#include <unordered_map>
+#include "nbs/NCmdLine.hpp"
+#include "nbs/base/Logger.hpp"
+
+#include <exception>
 #include <string>
 
 namespace nbs {
 
     class NBSCtx 
     {
+        class PrivateData;
     public:
         enum OS { Unknown, Windows, MacOS, Linux };
+        struct NBSError : std::exception {
+            const char* message;
+            NBSError(const char* error) {
+                LogError("[ERROR] ", error);
+            }
+            virtual char const *what() const noexcept {
+                return "nbs exception";
+            }
+        };
 
     public:
         NBSCtx(int argc, char** argv);
         ~NBSCtx();
 
         void globalInit();
-        int runScript();
+        int run();
+
+        const char* quiryVariable(const char* key);
 
         struct CtxData {
             const int version_code = '0101';
@@ -29,8 +44,6 @@ namespace nbs {
             const std::string work_dir;
             const std::string bin_dir;
             const std::string obj_dir;
-            
-            std::unordered_map<std::string, std::string> globalVariables;  
         } globDatas;
 
         inline bool isDataReady() const {
@@ -42,8 +55,16 @@ namespace nbs {
 
         static const char* getCurrentPlatform();
         static OS getCurrentOS();
+        static NBSCtx* getInstance();
 
     private:
+        bool runScript();
+
+    private:
+        static NBSCtx* s_ctx;
+
         PluginMgr* m_mgr;
+        NCmdLine m_cmdLine;
+        PrivateData* m_priv;
     };
 }

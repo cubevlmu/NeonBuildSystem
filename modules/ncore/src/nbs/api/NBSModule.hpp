@@ -1,22 +1,27 @@
 #pragma once
 
+#include "nbs/NCmdLine.hpp"
+
 namespace nbs {
+
+    struct PluginCmd {
+        typedef bool(*flag)(int, char*&, char*&);
+        const char* key;
+        const char* desc;
+        bool(*handler)(NCmdLine::NCmd*);
+    };
+
 
     class NBSModule
     {
     public:
-        struct Cmd {
-            const char* key;
-            const bool(*handler)(const char* key, int argc, const char** args);
-            const char* desc;
-        };
-
         struct ModuleData {
             const char* name;
             const char* author;
             const char* configPrefix;
             const int version;
-            const Cmd* cmdMap;
+            PluginCmd* cmdMap;
+            long cmdMapSize;
         };
 
     public:

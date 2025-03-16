@@ -1,4 +1,5 @@
 #include "Logger.hpp"
+#include "nbs/utils/StringUtils.hpp"
 #include "spdlog/common.h"
 
 #include <memory>
@@ -19,12 +20,11 @@ namespace nbs {
     }();
 
     void Logger::init(const char* name) {
-        std::string fileName(name);
-        fileName.append(".log");
+        FastConcat(fileName, name, ".log");
 
         std::vector<spdlog::sink_ptr> logSinks;
 		logSinks.emplace_back(std::make_shared<spdlog::sinks::stdout_color_sink_mt>());
-		logSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>(fileName, true));
+		logSinks.emplace_back(std::make_shared<spdlog::sinks::basic_file_sink_mt>((const char*)fileName, true));
 
 		logSinks[0]->set_pattern(FORMAT);
 		logSinks[1]->set_pattern(FORMAT);

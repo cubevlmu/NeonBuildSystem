@@ -1,50 +1,71 @@
 #include "NLuaCtx.hpp"
 
 #include "nbs/NBSFile.hpp"
+#include "nbs/api/NBSModule.hpp"
 #include "nbs/base/Logger.hpp"
 
 nbs::NBSModule* nbs_plugin_nlua_init(nbs::NBSCtx* ctx) {
-    return new nbs::NLua(ctx);
+    return new nbs::NLuaCtx(ctx);
 }
 
 namespace nbs {
 
-    NBSModule::ModuleData NLua::s_data = {
+    static PluginCmd s_cmd[] = {
+        PluginCmd {
+            .key = "script",
+            .desc = "run lua script",
+            .handler = [](NCmdLine::NCmd* cmd) -> bool {
+                for(auto& tag : cmd->tags) {
+                    LogInfo(tag.key, " : ", tag.value);
+                }
+                LogInfo("Hello world");
+                return true;
+            }
+        }
+    };
+
+    NBSModule::ModuleData NLuaCtx::s_data = {
         .name = "scripting",
         .author = "flybird",
         .configPrefix = "scripts",
-        .version = 1001
+        .version = 1001,
+        .cmdMap = s_cmd,
+        .cmdMapSize = 1
     };
 
 
-    NLua::NLua(NBSCtx* ctx)
+    NLuaCtx::NLuaCtx(NBSCtx* ctx)
         : NBSModule(ctx)
+        , m_mgr(this)
     {
 
     }
 
 
-    void NLua::onInit()
+    void NLuaCtx::onInit()
     {
         LogDebug("NLua loaded!");
+        
+        m_mgr.init();
     }
 
 
-    void NLua::onStop()
+    void NLuaCtx::onStop()
     {
+        
     }
 
 
-    void NLua::onConfig(ConfGroup* group)
+    void NLuaCtx::onConfig(ConfGroup* group)
     {
-        for(auto item : group->getArray("lua")) {
-            LogDebug("CFG: ", item);
+        for (auto item : group->getArray("lua")) {
+            LogInfo(item);
         }
 
     }
 
 
-    NBSModule::ModuleData NLua::getData()
+    NBSModule::ModuleData NLuaCtx::getData()
     {
         return s_data;
     }

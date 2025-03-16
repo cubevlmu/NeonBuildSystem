@@ -5,17 +5,21 @@
 #include "nbs/NBSCtx.hpp"
 #include "nbs/api/NBSModule.hpp"
 
+#include "ScriptMgr.hpp"
+
+struct lua_State;
+
 extern "C" {
     nbs::NBSModule* nbs_plugin_nlua_init(nbs::NBSCtx*); 
 }
 
 namespace nbs {
 
-    class NLua : public nbs::NBSModule 
+    class NLuaCtx : public nbs::NBSModule 
     {
     public:
-        NLua(NBSCtx* ctx);
-        virtual ~NLua() = default;
+        NLuaCtx(NBSCtx* ctx);
+        virtual ~NLuaCtx() = default;
 
         virtual void onInit() override;
         virtual void onStop() override;
@@ -24,6 +28,7 @@ namespace nbs {
 
     private:
         static NBSModule::ModuleData s_data;
+        ScriptMgr m_mgr;
     };
     
 }

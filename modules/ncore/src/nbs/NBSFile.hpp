@@ -92,7 +92,6 @@ namespace nbs {
 
     private:
         void dealGroupConfig(Json::Value& v, ConfGroup* gp, const std::string& parent_key);
-        std::string dealWithArgumentedValue(const std::string&);
 
     private:
         NBSCtx* m_ctx;

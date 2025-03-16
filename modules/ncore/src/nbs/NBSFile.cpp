@@ -1,10 +1,12 @@
 #include "NBSFile.hpp"
 
 #include "nbs/NBSCtx.hpp"
+#include "nbs/NText.hpp"
 #include "nbs/api/NBSModule.hpp"
 #include "nbs/api/PluginMgr.hpp"
 #include "nbs/base/Logger.hpp"
 #include "nbs/utils/JsonUtils.hpp"
+#include "nbs/utils/StringUtils.hpp"
 
 #include <cstring>
 #include <filesystem>
@@ -17,8 +19,6 @@
 #include <string>
 
 namespace nbs {
-
-#define NPString(STR) STR.find('$') != std::string::npos ? dealWithArgumentedValue(STR) : STR
 
     NBSFile::NBSFile(const char* path, NBSCtx* ctx)
         : m_ctx(ctx)
@@ -67,10 +67,10 @@ namespace nbs {
                 LogWarn("Unsupport item in use block -> ", item.type());
                 continue;
             }
-            auto str = NPString(item.asString());
+            auto str = NText {item.asCString()};
             auto* plug = m_ctx->getPluginMgr()->getPlugin(str);
             if (plug == nullptr) {
-                LogWarn("Plugin ", str, " load failed. NBS will skip it's configs");
+                LogWarn("Plugin ", (const char*)str, " load failed. NBS will skip it's configs");
                 continue;
             }
 
@@ -177,12 +177,6 @@ namespace nbs {
     }
 
 
-    std::string NBSFile::dealWithArgumentedValue(const std::string&)
-    {
-        return std::string();
-    }
-
-
     ///////////////////////////////////////////////////////////////
     //// ConfGroup::Array
     ///////////////////////////////////////////////////////////////
@@ -233,12 +227,10 @@ namespace nbs {
         if (idx > m_size)
             return "";
 
-        std::string fk {m_key};
-        fk.append(".").append(std::to_string(idx));
+        auto num_txt = std::to_string(idx);
+        FastConcat(real_key, m_key.c_str(), ".", num_txt.c_str());
 
-        //LogDebug("[DEBUG] Try to get array item : ", (const char*)fk.c_str());
-
-        return m_gp->getValue(fk.c_str());
+        return m_gp->getValue((const char*)real_key);
     }
 
 
@@ -254,15 +246,12 @@ namespace nbs {
             return "";
         }
 
-        std::string fk {m_prefix};
-        fk.append(".").append(key);
+        FastConcat(real_key, m_prefix, ".", key);
 
-        //LogDebug("[DEBUG] Fullkey ", (const char*)full_key);
-
-        if (confs.find(fk) == confs.end()) {
+        if (confs.find((const char*)real_key) == confs.end()) {
             return "";
         }
-        return confs[fk].c_str();
+        return confs[(const char*)real_key].c_str();
     }
 
 
@@ -272,19 +261,18 @@ namespace nbs {
             return Array::Empty;
         }
 
-        std::string fk {m_prefix};
-        fk.append(".").append(key);
+        FastConcat(real_key, m_prefix, ".", key);
 
-        if (confs.find(fk) == confs.end()) {
+        if (confs.find((const char*)real_key) == confs.end()) {
             return Array::Empty;
         }
         try {
-            auto size = std::stoi(confs[fk]);
+            auto size = std::stoi(confs[(const char*)real_key]);
             Array arr{ this, key, (size_t)size };
             return std::move(arr);
         }
         catch (...) {
-            LogDebug("Conf ", (const char*)fk.c_str(), " value is not a size value -> ", confs[key]);
+            LogDebug("Conf ", (const char*)real_key, " value is not a size value -> ", confs[key]);
             return Array::Empty;
         }
     }

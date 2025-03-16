@@ -2,6 +2,7 @@
 
 #include "nbs/NBSCtx.hpp"
 #include "nbs/base/Logger.hpp"
+#include "nbs/base/Serializer.hpp"
 #include "nbs/utils/SharedLib.hpp"
 #include "nbs/utils/JsonUtils.hpp"
 #include "nbs/utils/StringUtils.hpp"
@@ -54,11 +55,10 @@ namespace nbs {
             return m_pluginLoaded[id]->module;
         }
 
-        std::string func_id{};
-        func_id.append("nbs_plugin_").append(id).append("_init");
+        FastConcat(func_id, "nbs_plugin_", id.c_str(), "_init");
 
         typedef NBSModule* (func_init_sym)(NBSCtx*);
-        auto* func_ptr = (func_init_sym*)SharedLib::getFuncFromENV(func_id.c_str());
+        auto* func_ptr = (func_init_sym*)SharedLib::getFuncFromENV((const char*)func_id);
         if (func_ptr == nullptr) {
             LogError("[Plugin] Plugin is not found or not valid -> id : ", id);
             return nullptr;
@@ -76,7 +76,9 @@ namespace nbs {
         ManagedPlugin* plug_man = new ManagedPlugin{
             .mgr = this,
             .module = plug_ins,
-            .ref = {0}
+            .ref = {0},
+            .isInternalPlugin = true,
+            .path = id
         };
         m_pluginLoaded.insert({ id, plug_man });
 
@@ -215,11 +217,10 @@ namespace nbs {
             return nullptr;
         }
 
-        std::string func_id{};
-        func_id.append("nbs_plugin_").append(id).append("_init");
+        FastConcat(func_id, "nbs_plugin_", id.c_str(), "_init");
 
         typedef NBSModule* (func_init_sym)(NBSCtx*);
-        auto* func_ptr = (func_init_sym*)SharedLib::getFuncFromENV(func_id.c_str());
+        auto* func_ptr = (func_init_sym*)SharedLib::getFuncFromENV((const char*)func_id);
         if (func_ptr == nullptr) {
             LogError("[Plugin] Plugin is not found or not valid -> id : ", id);
             releasePlugins(plug_dep_new);
@@ -239,7 +240,9 @@ namespace nbs {
         ManagedPlugin* plug_man = new ManagedPlugin{
             .mgr = this,
             .module = plug_ins,
-            .ref = {0}
+            .ref = {0},
+            .isInternalPlugin = false,
+            .path = plug_path_raw
         };
         m_pluginLoaded.insert({ id, plug_man });
 
@@ -272,10 +275,18 @@ namespace nbs {
     {
         m_mtx.lock();
 
-        LogWarn("[Plugin] Trying to unload all plugins forced!");
+        FastConcat(real_path, m_ctx->globDatas.nbs_work_dir.c_str(), "/plugins_mgr.cache");
+        if (std::filesystem::exists((const char*)real_path)) {
+            std::filesystem::remove((const char*)real_path);
+        }
+        OSerializer ost {(const char*)real_path};
+        ost.writeU32(MAGIC);
+        ost.writeU64(m_pluginLoaded.size());
 
         for (auto& [key,v] : m_pluginLoaded) {
             v->module->onStop();
+            ost.writeBool(v->isInternalPlugin);
+            ost.writeString(v->path);
         }
 
         for (auto& [key,v] : m_pluginLoaded) {
@@ -284,6 +295,7 @@ namespace nbs {
         }
 
         m_pluginLoaded.clear();
+        ost.close();
 
         m_mtx.unlock();
     }
@@ -301,6 +313,20 @@ namespace nbs {
         }
 
         return m_pluginLoaded[id]->module;
+    }
+
+
+    PluginCmd* PluginMgr::checkCmd(const char* label)
+    {
+        for (auto& [_, plug] : m_pluginLoaded) {
+            for (long idx = 0 ; idx < plug->module->getData().cmdMapSize; idx++) {
+                auto& ptr = plug->module->getData().cmdMap[idx];
+                if (strcmp(ptr.key, label) == 0) {
+                    return &ptr;
+                }
+            }
+        }
+        return nullptr;
     }
 
 
@@ -328,6 +354,37 @@ namespace nbs {
     {
         LogDebug("[Plugin] Trying to load internal plugins");
         loadPlugin("nlua");
+
+        FastConcat(real_path, m_ctx->globDatas.nbs_work_dir.c_str(), "/plugins_mgr.cache");
+        if (!std::filesystem::exists((const char*)real_path)) {
+            return;
+        }
+        ISerializer isz {(const char*)real_path};
+        
+        u32 magic {};
+        isz.readU32(magic);
+        if (magic != MAGIC) {
+            LogWarn("Current plugin cache is not valid");
+            return;
+        }
+
+        u64 plug_size {};
+        isz.readU64(plug_size);
+
+        for (u64 i = 0; i < plug_size; i++) {
+            bool isInternal {};
+            std::string path {};
+
+            isz.readBool(isInternal);
+            isz.readString(path);
+
+            LogDebug("Trying to load ", path);
+            if (isInternal) {
+                loadPlugin(path);
+            } else {
+                loadPluginFromDir(path);
+            }
+        }
     }
 
 

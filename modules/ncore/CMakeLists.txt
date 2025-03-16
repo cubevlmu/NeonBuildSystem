@@ -28,9 +28,9 @@ add_executable(NCore
 )
 
 InstallMacOS(includeList linkList)
-InstallCLI11(includeList linkList)
 InstallSpdlog(includeList linkList)
 InstallJsonCPP(includeList linkList)
+InstallLuaJIT(includeList linkList)
 
 IF(${dependenciesList})
 add_dependencies(NCore 

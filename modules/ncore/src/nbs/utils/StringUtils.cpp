@@ -12,29 +12,18 @@ namespace nbs {
     }
 
 
-    void fastConcat(const char* a, const char* b, char* d)
+    void fastConcat(char* d, const char* a, const char* b)
     {
         size_t len1 = strlen(a);
         size_t len2 = strlen(b);
 
-        if (len1 + len2 >= strlen(d)) {
+        if (len1 + len2 + 1 >= strlen(d)) {
             return;
         }
 
         strcpy(d, a);
         strcpy(d + len1, a);
-    }
-
-
-    void fastConcat(const char* a, char* d)
-    {
-        size_t len1 = strlen(a);
-
-        if (len1 >= strlen(d)) {
-            return;
-        }
-
-        strcpy(d, a);
+        d[len1 + len2] = '\0';
     }
 
 
